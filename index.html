@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Escape Room IA – Las 7 Magníficas</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0a0c14;
+  --panel:#10141f;
+  --panel2:#161b2e;
+  --border:#2a3050;
+  --gold:#f0c060;
+  --gold2:#e89820;
+  --cyan:#30d5c8;
+  --red:#e84040;
+  --green:#40d880;
+  --text:#d8dff0;
+  --muted:#6070a0;
+  --white:#f0f4ff;
+  --glow: 0 0 20px rgba(48,213,200,0.3);
+  --glow-gold: 0 0 20px rgba(240,192,96,0.4);
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Crimson Text',Georgia,serif;
+  min-height:100vh;
+  overflow-x:hidden;
+  cursor:default;
+}
+
+/* ─── PARTICLES BG ─── */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.particle{
+  position:absolute;
+  width:2px;height:2px;
+  border-radius:50%;
+  background:var(--cyan);
+  opacity:0;
+  animation:float linear infinite;
+}
+@keyframes float{
+  0%{transform:translateY(100vh) translateX(0);opacity:0}
+  10%{opacity:.6}
+  90%{opacity:.3}
+  100%{transform:translateY(-10vh) translateX(60px);opacity:0}
+}
+
+/* ─── SCREENS ─── */
+.screen{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 20px;
+}
+.screen.active{display:flex;}
+
+/* ─── INTRO ─── */
+#screen-intro{
+  background:radial-gradient(ellipse at 50% 30%, #1a1040 0%, var(--bg) 70%);
+  text-align:center;
+}
+.intro-badge{
+  display:inline-block;
+  border:1px solid var(--gold);
+  color:var(--gold);
+  font-family:'JetBrains Mono',monospace;
+  font-size:.7rem;
+  letter-spacing:.18em;
+  padding:6px 20px;
+  border-radius:2px;
+  margin-bottom:32px;
+  animation:pulse-border 2.5s ease infinite;
+}
+@keyframes pulse-border{
+  0%,100%{box-shadow:0 0 0 0 rgba(240,192,96,.4)}
+  50%{box-shadow:0 0 0 8px rgba(240,192,96,0)}
+}
+.intro-title{
+  font-family:'Cinzel',serif;
+  font-size:clamp(2rem,6vw,4rem);
+  font-weight:900;
+  line-height:1.1;
+  letter-spacing:.04em;
+  color:var(--white);
+  text-shadow:0 0 40px rgba(240,192,96,.3);
+}
+.intro-title .accent{color:var(--gold);}
+.intro-subtitle{
+  margin-top:16px;
+  font-size:1.2rem;
+  font-style:italic;
+  color:var(--muted);
+  max-width:540px;
+}
+.intro-lore{
+  margin:32px auto 0;
+  max-width:600px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-left:3px solid var(--gold);
+  padding:24px 28px;
+  font-size:1.05rem;
+  line-height:1.7;
+  color:var(--text);
+  text-align:left;
+  border-radius:4px;
+}
+.intro-lore strong{color:var(--gold);}
+.btn{
+  display:inline-block;
+  margin-top:36px;
+  padding:14px 44px;
+  background:transparent;
+  border:2px solid var(--cyan);
+  color:var(--cyan);
+  font-family:'Cinzel',serif;
+  font-size:1rem;
+  letter-spacing:.12em;
+  cursor:pointer;
+  border-radius:4px;
+  transition:all .25s;
+  position:relative;
+  overflow:hidden;
+}
+.btn::before{
+  content:'';position:absolute;inset:0;
+  background:var(--cyan);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .25s;
+  z-index:-1;
+}
+.btn:hover{color:var(--bg);}
+.btn:hover::before{transform:scaleX(1);}
+.btn.gold{border-color:var(--gold);color:var(--gold);}
+.btn.gold::before{background:var(--gold);}
+.btn.gold:hover{color:var(--bg);}
+
+/* ─── HUD ─── */
+#hud{
+  position:fixed;top:0;left:0;right:0;
+  z-index:100;
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 28px;
+  background:rgba(10,12,20,.9);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(8px);
+}
+#hud.visible{display:flex;}
+.hud-title{
+  font-family:'Cinzel',serif;
+  font-size:.8rem;
+  letter-spacing:.15em;
+  color:var(--muted);
+}
+.hud-center{display:flex;gap:24px;align-items:center;}
+.hud-room{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.85rem;
+  color:var(--gold);
+}
+.hud-lives{display:flex;gap:6px;}
+.life{font-size:1rem;transition:filter .3s;}
+.life.lost{filter:grayscale(1);opacity:.3;}
+.hud-score{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.85rem;
+  color:var(--cyan);
+}
+
+/* ─── ROOM SCREEN ─── */
+#screen-room{
+  padding-top:90px;
+  padding-bottom:60px;
+  background:radial-gradient(ellipse at 50% 0%, #101828 0%, var(--bg) 60%);
+  align-items:stretch;
+  max-width:900px;
+  margin:0 auto;
+  width:100%;
+}
+
+.room-header{
+  text-align:center;
+  margin-bottom:32px;
+}
+.room-number{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.75rem;
+  color:var(--muted);
+  letter-spacing:.2em;
+  margin-bottom:8px;
+}
+.room-title{
+  font-family:'Cinzel',serif;
+  font-size:clamp(1.4rem,4vw,2.2rem);
+  color:var(--white);
+  margin-bottom:6px;
+}
+.room-title .room-emoji{margin-right:10px;}
+
+.scenario-box{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-left:3px solid var(--cyan);
+  border-radius:6px;
+  padding:22px 26px;
+  margin-bottom:24px;
+  font-size:1.08rem;
+  line-height:1.7;
+}
+.scenario-box .label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.65rem;
+  color:var(--cyan);
+  letter-spacing:.2em;
+  margin-bottom:10px;
+  display:block;
+}
+
+.challenge-box{
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:22px 26px;
+  margin-bottom:28px;
+}
+.challenge-box .label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.65rem;
+  color:var(--gold);
+  letter-spacing:.2em;
+  margin-bottom:12px;
+  display:block;
+}
+.challenge-q{
+  font-size:1.15rem;
+  font-weight:600;
+  color:var(--white);
+  line-height:1.5;
+}
+
+/* ─── OPTIONS ─── */
+.options-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:28px;
+}
+@media(max-width:540px){.options-grid{grid-template-columns:1fr;}}
+
+.option-btn{
+  background:var(--panel);
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:16px 18px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  transition:all .22s;
+  text-align:left;
+  color:var(--text);
+  font-family:'Crimson Text',serif;
+  font-size:1rem;
+}
+.option-btn:hover{
+  border-color:var(--cyan);
+  background:rgba(48,213,200,.06);
+  transform:translateY(-2px);
+  box-shadow:var(--glow);
+}
+.option-btn.selected-correct{
+  border-color:var(--green);
+  background:rgba(64,216,128,.08);
+  animation:correct-flash .4s ease;
+}
+.option-btn.selected-wrong{
+  border-color:var(--red);
+  background:rgba(232,64,64,.08);
+  animation:wrong-shake .35s ease;
+}
+.option-btn.reveal-correct{
+  border-color:var(--green);
+  background:rgba(64,216,128,.06);
+}
+@keyframes correct-flash{
+  0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}
+}
+@keyframes wrong-shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}60%{transform:translateX(6px)}
+}
+
+.option-icon{
+  width:44px;height:44px;
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;
+  flex-shrink:0;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+}
+.option-text{flex:1;}
+.option-name{
+  font-family:'Cinzel',serif;
+  font-size:.9rem;
+  color:var(--white);
+  margin-bottom:3px;
+}
+.option-hint{font-size:.85rem;color:var(--muted);font-style:italic;}
+
+/* ─── FEEDBACK ─── */
+.feedback-box{
+  display:none;
+  border-radius:8px;
+  padding:20px 24px;
+  margin-bottom:20px;
+  font-size:1.05rem;
+  line-height:1.65;
+  animation:fadeIn .35s ease;
+}
+.feedback-box.correct{
+  background:rgba(64,216,128,.08);
+  border:1px solid var(--green);
+  color:var(--green);
+}
+.feedback-box.wrong{
+  background:rgba(232,64,64,.07);
+  border:1px solid var(--red);
+  color:#f09090;
+}
+.feedback-box .fb-title{
+  font-family:'Cinzel',serif;
+  font-size:1rem;
+  margin-bottom:8px;
+  display:block;
+}
+.feedback-box .fb-body{color:var(--text);}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.next-btn-wrap{text-align:center;margin-top:4px;}
+
+/* ─── PROGRESS BAR ─── */
+.progress-wrap{
+  margin-bottom:28px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.progress-step{
+  flex:1;height:4px;
+  border-radius:2px;
+  background:var(--border);
+  transition:background .4s;
+}
+.progress-step.done{background:var(--green);}
+.progress-step.current{background:var(--gold);animation:pulse-bar 1.5s ease infinite;}
+@keyframes pulse-bar{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ─── END SCREEN ─── */
+#screen-end{
+  background:radial-gradient(ellipse at 50% 40%, #1a2840 0%, var(--bg) 65%);
+  text-align:center;
+}
+.end-icon{font-size:5rem;margin-bottom:20px;animation:bounceIn .6s ease;}
+@keyframes bounceIn{
+  0%{transform:scale(0)}70%{transform:scale(1.1)}100%{transform:scale(1)}
+}
+.end-title{
+  font-family:'Cinzel',serif;
+  font-size:clamp(1.8rem,5vw,3rem);
+  color:var(--gold);
+  margin-bottom:12px;
+  text-shadow:var(--glow-gold);
+}
+.end-subtitle{
+  font-size:1.1rem;
+  color:var(--muted);
+  margin-bottom:28px;
+  font-style:italic;
+}
+.cert-box{
+  background:var(--panel);
+  border:2px solid var(--gold);
+  border-radius:12px;
+  padding:36px 44px;
+  max-width:560px;
+  margin:0 auto 32px;
+  position:relative;
+  overflow:hidden;
+}
+.cert-box::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    45deg,transparent,transparent 40px,
+    rgba(240,192,96,.02) 40px,rgba(240,192,96,.02) 80px
+  );
+}
+.cert-watermark{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-family:'Cinzel',serif;
+  font-size:5rem;
+  color:rgba(240,192,96,.04);
+  white-space:nowrap;
+  pointer-events:none;
+}
+.cert-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.65rem;
+  letter-spacing:.2em;
+  color:var(--gold);
+  margin-bottom:16px;
+}
+.cert-name{
+  font-family:'Cinzel',serif;
+  font-size:1.5rem;
+  color:var(--white);
+  margin-bottom:8px;
+}
+.cert-course{
+  font-size:1rem;
+  color:var(--muted);
+  font-style:italic;
+  margin-bottom:20px;
+}
+.cert-score{
+  font-family:'JetBrains Mono',monospace;
+  font-size:2.2rem;
+  color:var(--cyan);
+  font-weight:700;
+}
+.cert-score span{font-size:1rem;color:var(--muted);}
+.stars-row{margin-top:10px;font-size:1.6rem;letter-spacing:6px;}
+
+.end-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+
+/* ─── MODAL CLUE ─── */
+.clue-modal{
+  display:none;position:fixed;inset:0;z-index:200;
+  align-items:center;justify-content:center;
+  background:rgba(10,12,20,.85);
+  backdrop-filter:blur(4px);
+}
+.clue-modal.open{display:flex;animation:fadeIn .25s ease;}
+.clue-inner{
+  background:var(--panel2);
+  border:1px solid var(--gold);
+  border-radius:10px;
+  padding:32px 36px;
+  max-width:480px;
+  text-align:center;
+  position:relative;
+}
+.clue-icon{font-size:2.5rem;margin-bottom:14px;}
+.clue-title{
+  font-family:'Cinzel',serif;
+  font-size:1.2rem;
+  color:var(--gold);
+  margin-bottom:12px;
+}
+.clue-text{font-size:1.05rem;line-height:1.65;color:var(--text);}
+.clue-close{
+  margin-top:24px;
+  padding:10px 30px;
+  background:transparent;
+  border:1.5px solid var(--gold);
+  color:var(--gold);
+  font-family:'Cinzel',serif;
+  font-size:.85rem;
+  letter-spacing:.1em;
+  cursor:pointer;
+  border-radius:4px;
+  transition:all .2s;
+}
+.clue-close:hover{background:var(--gold);color:var(--bg);}
+
+/* ─── FOOTER ─── */
+.footer-brand{
+  position:fixed;bottom:12px;left:50%;transform:translateX(-50%);
+  font-family:'JetBrains Mono',monospace;
+  font-size:.62rem;
+  color:var(--muted);
+  letter-spacing:.1em;
+  white-space:nowrap;
+  z-index:50;
+}
+
+/* ─── UTIL ─── */
+.hidden{display:none!important;}
+.mt16{margin-top:16px;}
+</style>
+</head>
+<body>
+
+<!-- PARTICLES -->
+<div id="particles"></div>
+
+<!-- HUD -->
+<nav id="hud">
+  <div class="hud-title">🔐 ESCAPE ROOM IA</div>
+  <div class="hud-center">
+    <div class="hud-room" id="hud-room">SALA 1/7</div>
+    <div class="hud-lives" id="hud-lives"></div>
+  </div>
+  <div class="hud-score">⭐ <span id="hud-score">0</span> pts</div>
+</nav>
+
+<!-- ═══ PANTALLA INTRO ═══ -->
+<section class="screen active" id="screen-intro">
+  <div class="intro-badge">✦ DIPLOMATURA UNIVERSITARIA DE IA APLICADA A LA EDUCACIÓN ✦</div>
+  <h1 class="intro-title">
+    🔐 ESCAPE ROOM<br>
+    <span class="accent">Las 7 Magníficas</span><br>
+    de la IA
+  </h1>
+  <p class="intro-subtitle">Un desafío pedagógico para dominar las herramientas de Inteligencia Artificial</p>
+
+  <div class="intro-lore">
+    <strong>📜 Misión:</strong> El sistema educativo del futuro ha quedado bloqueado por un fallo crítico. 
+    Solo tú puedes restaurarlo. Para ello, deberás superar <strong>7 salas</strong>, cada una con un desafío pedagógico real. 
+    En cada sala, deberás elegir la herramienta de IA correcta para resolverlo.<br><br>
+    Tienes <strong>3 vidas</strong>. Un error te dará una pista, pero no avanzará. 
+    Al completar las 7 salas, recibirás tu <strong>certificado de Maestro/a en IA Educativa</strong>.<br><br>
+    <strong>¿Estás listo/a para salvar el futuro de la educación?</strong>
+  </div>
+
+  <button class="btn gold" onclick="startGame()">⚡ INICIAR MISIÓN</button>
+
+  <div style="margin-top:40px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);text-align:center;letter-spacing:.12em;">
+    Antonio Álvarez Abril · Diplomatura Universitaria de IA Aplicada a la Educación
+  </div>
+</section>
+
+<!-- ═══ PANTALLA SALA ═══ -->
+<section class="screen" id="screen-room" style="display:none;flex-direction:column;">
+  <div class="room-header">
+    <div class="room-number" id="room-number">SALA 1 DE 7</div>
+    <h2 class="room-title" id="room-title"></h2>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap"></div>
+
+  <div class="scenario-box">
+    <span class="label">▸ ESCENARIO</span>
+    <div id="scenario-text"></div>
+  </div>
+
+  <div class="challenge-box">
+    <span class="label">▸ DESAFÍO</span>
+    <div class="challenge-q" id="challenge-text"></div>
+  </div>
+
+  <div class="options-grid" id="options-grid"></div>
+
+  <div class="feedback-box" id="feedback-box">
+    <span class="fb-title" id="fb-title"></span>
+    <div class="fb-body" id="fb-body"></div>
+  </div>
+
+  <div class="next-btn-wrap">
+    <button class="btn hidden" id="next-btn" onclick="nextRoom()">Siguiente sala →</button>
+  </div>
+</section>
+
+<!-- ═══ PANTALLA FINAL ═══ -->
+<section class="screen" id="screen-end">
+  <div class="end-icon" id="end-icon">🏆</div>
+  <h2 class="end-title" id="end-title">¡SISTEMA RESTAURADO!</h2>
+  <p class="end-subtitle" id="end-subtitle">Has superado todas las salas y salvado el futuro educativo.</p>
+
+  <div class="cert-box">
+    <div class="cert-watermark">🔐</div>
+    <div class="cert-label">✦ CERTIFICADO DE LOGRO ✦</div>
+    <div class="cert-name">Maestro/a en IA Educativa</div>
+    <div class="cert-course">Las 7 Magníficas de la IA<br>Diplomatura Universitaria · Antonio Álvarez Abril</div>
+    <div class="cert-score" id="cert-score">700 <span>/ 700 pts</span></div>
+    <div class="stars-row" id="stars-row">⭐⭐⭐</div>
+  </div>
+
+  <div class="end-actions">
+    <button class="btn" onclick="printCert()">🖨️ Imprimir certificado</button>
+    <button class="btn gold" onclick="restartGame()">↺ Jugar de nuevo</button>
+  </div>
+</section>
+
+<!-- MODAL CLUE -->
+<div class="clue-modal" id="clue-modal">
+  <div class="clue-inner">
+    <div class="clue-icon" id="clue-icon">💡</div>
+    <div class="clue-title" id="clue-title">PISTA</div>
+    <div class="clue-text" id="clue-text"></div>
+    <button class="clue-close" onclick="closeClue()">Entendido →</button>
+  </div>
+</div>
+
+<div class="footer-brand">🔐 ESCAPE ROOM IA · Antonio Álvarez Abril · Diplomatura IA Aplicada a la Educación</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// DATA – 7 ROOMS
+// ═══════════════════════════════════════════════
+const ROOMS = [
+  {
+    id:1,
+    emoji:'📚',
+    title:'La Biblioteca Bloqueada',
+    scenario:'Una profesora de Lengua de secundaria necesita que sus 28 alumnos investiguen sobre el Romanticismo. Quiere que cada estudiante encuentre fuentes confiables, lea artículos académicos y genere un resumen con las referencias citadas al pie.',
+    challenge:'¿Qué herramienta de IA es la más adecuada para que los alumnos busquen información con fuentes verificadas y citadas automáticamente?',
+    options:[
+      {name:'ChatGPT',icon:'🤖',hint:'Genera texto pero no cita fuentes en tiempo real'},
+      {name:'Perplexity',icon:'🔍',hint:'Búsqueda web con referencias académicas citadas',correct:true},
+      {name:'Grok',icon:'⚡',hint:'Fuerte en tendencias actuales, no en referencias académicas'},
+      {name:'Meta AI',icon:'🌐',hint:'Más enfocado en creación de imágenes y redes sociales'},
+    ],
+    correct_feedback:'✅ ¡Exacto! Perplexity es la herramienta ideal porque busca en la web en tiempo real y cita automáticamente las fuentes al pie de cada respuesta, perfecto para investigación académica estudiantil.',
+    wrong_feedback:'🔍 Piensa en cuál herramienta fue diseñada especialmente para buscar en internet y mostrar las fuentes de cada dato. ¿Cuál conecta búsqueda web con referencias automáticas?',
+    clue:'Esta herramienta funciona como un buscador inteligente: no solo encuentra información, sino que te dice exactamente de dónde viene cada dato.',
+    points:100
+  },
+  {
+    id:2,
+    emoji:'📝',
+    title:'El Ensayo Perdido',
+    scenario:'Un docente universitario quiere que sus estudiantes aprendan a escribir ensayos argumentativos. Necesita una IA que dialogue con el alumno de forma socrática, señale falacias en sus argumentos, sugiera mejoras en la estructura y profundice en el pensamiento crítico.',
+    challenge:'¿Qué herramienta de IA es la mejor tutora de escritura y pensamiento crítico para nivel universitario?',
+    options:[
+      {name:'Claude',icon:'🧠',hint:'Diseñado para diálogo profundo, análisis y escritura académica',correct:true},
+      {name:'DeepSeek',icon:'💻',hint:'Excelente en matemáticas y código, menos en escritura literaria'},
+      {name:'Gemini',icon:'✨',hint:'Potente, pero más fuerte en multimodalidad que en diálogo socrático'},
+      {name:'NotebookLM',icon:'📓',hint:'Trabaja con documentos propios, no es tutor de escritura'},
+    ],
+    correct_feedback:'✅ ¡Brillante! Claude destaca por su capacidad de mantener diálogos profundos, analizar argumentos con rigor, ofrecer retroalimentación sofisticada y guiar al estudiante como un tutor socrático genuino.',
+    wrong_feedback:'🧠 Busca la IA famosa por sus capacidades de análisis, razonamiento y escritura académica. ¿Cuál fue entrenada especialmente para diálogos reflexivos y crítica constructiva?',
+    clue:'Esta herramienta fue desarrollada por Anthropic con énfasis en el razonamiento ético y el diálogo reflexivo. Su nombre recuerda al asistente del Dr. Victor Frankenstein.',
+    points:100
+  },
+  {
+    id:3,
+    emoji:'🔢',
+    title:'El Código Roto',
+    scenario:'Un instituto técnico quiere enseñar programación y álgebra a alumnos de 16 años. El profesor necesita una IA que pueda resolver problemas matemáticos complejos paso a paso, depurar código en Python, y explicar el razonamiento lógico detrás de cada solución.',
+    challenge:'¿Qué herramienta de IA es la más poderosa para razonamiento matemático avanzado y pensamiento computacional?',
+    options:[
+      {name:'Meta AI',icon:'🌐',hint:'Muy buena generando imágenes, no especializada en matemáticas'},
+      {name:'Perplexity',icon:'🔍',hint:'Busca información, no resuelve problemas de código paso a paso'},
+      {name:'DeepSeek',icon:'💻',hint:'Razonamiento matemático y código avanzado es su especialidad',correct:true},
+      {name:'Grok',icon:'⚡',hint:'Bueno en conversación, no el más fuerte en matemáticas avanzadas'},
+    ],
+    correct_feedback:'✅ ¡Correcto! DeepSeek es reconocido por su excepcional capacidad de razonamiento matemático, resolución de problemas lógicos paso a paso y codificación avanzada, perfecto para enseñanza STEM.',
+    wrong_feedback:'💻 Piensa en qué herramienta fue entrenada con especial énfasis en matemáticas, lógica y programación. ¿Cuál puede resolver una integral o depurar código complejo con explicación detallada?',
+    clue:'Esta IA china sorprendió al mundo por su capacidad matemática comparable a modelos mucho más costosos. Su nombre evoca exploración en las profundidades.',
+    points:100
+  },
+  {
+    id:4,
+    emoji:'🎙️',
+    title:'El Archivo Silenciado',
+    scenario:'Una docente ha recopilado 15 artículos en PDF sobre metodologías activas de aprendizaje para su investigación doctoral. Necesita que una IA analice todos esos documentos juntos, le haga preguntas sobre el contenido, genere un resumen comparativo y cree una guía de estudio.',
+    challenge:'¿Qué herramienta de IA permite analizar tus propios documentos y generar resúmenes o podcasts a partir de ellos?',
+    options:[
+      {name:'ChatGPT',icon:'🤖',hint:'Puede leer documentos pero no especializado en corpus propios'},
+      {name:'NotebookLM',icon:'📓',hint:'Diseñado específicamente para analizar documentos propios y generar podcasts',correct:true},
+      {name:'Claude',icon:'🧠',hint:'Puede analizar textos, pero no tiene la función de podcast de audio'},
+      {name:'Gemini',icon:'✨',hint:'Potente, pero NotebookLM está más especializado en este flujo'},
+    ],
+    correct_feedback:'✅ ¡Perfecto! NotebookLM de Google es el especialista en esto: permite subir PDFs, notas y documentos propios, hacer preguntas sobre ellos y generar hasta un podcast de audio conversacional automáticamente.',
+    wrong_feedback:'📓 Recuerda cuál herramienta es conocida específicamente por su función de "notebooks" donde puedes cargar tus propios documentos y hasta generar podcasts automáticos sobre ellos.',
+    clue:'Esta herramienta de Google tiene una función viral: convierte tus apuntes y PDFs en un podcast conversacional con dos voces que debaten el contenido.',
+    points:100
+  },
+  {
+    id:5,
+    emoji:'🖼️',
+    title:'La Clase Sin Imágenes',
+    scenario:'Un maestro de primaria quiere crear material visual para una clase sobre los ecosistemas del mundo. Necesita generar ilustraciones educativas personalizadas de diferentes biomas, y además poder compartirlo fácilmente con los padres por WhatsApp sin que necesiten instalar nada.',
+    challenge:'¿Qué herramienta de IA genera imágenes educativas Y está disponible directamente en WhatsApp sin apps adicionales?',
+    options:[
+      {name:'Gemini',icon:'✨',hint:'Genera imágenes pero requiere cuenta de Google y app separada'},
+      {name:'ChatGPT',icon:'🤖',hint:'Genera imágenes con DALL-E, pero no está en WhatsApp'},
+      {name:'Claude',icon:'🧠',hint:'Excelente para texto pero no genera imágenes ni está en WhatsApp'},
+      {name:'Meta AI',icon:'🌐',hint:'Genera imágenes y funciona directamente en WhatsApp e Instagram',correct:true},
+    ],
+    correct_feedback:'✅ ¡Brillante! Meta AI es única porque está integrada nativamente en WhatsApp, Instagram y Messenger. Genera imágenes con IA y es accesible para familias sin necesidad de descargar ninguna app extra.',
+    wrong_feedback:'🌐 Piensa en qué empresa es dueña de WhatsApp... y qué herramienta de IA han integrado directamente en sus plataformas de mensajería sin necesidad de apps adicionales.',
+    clue:'La empresa que creó esta IA también es propietaria de WhatsApp, Instagram y Facebook. Han integrado su IA directamente en estas plataformas.',
+    points:100
+  },
+  {
+    id:6,
+    emoji:'📰',
+    title:'La Desinformación',
+    scenario:'Una profesora de Ciencias Sociales quiere enseñar a sus alumnos de bachillerato a detectar fake news y comprender el contexto geopolítico actual. Necesita una IA que tenga acceso a noticias en tiempo real, pueda contrastar fuentes y presente múltiples perspectivas sobre eventos recientes.',
+    challenge:'¿Qué herramienta de IA es ideal para analizar eventos de actualidad, contrastar perspectivas y trabajar educación mediática?',
+    options:[
+      {name:'DeepSeek',icon:'💻',hint:'Más fuerte en razonamiento matemático y código que en actualidad'},
+      {name:'NotebookLM',icon:'📓',hint:'Trabaja solo con documentos que le proporcionas, no tiene acceso a noticias'},
+      {name:'Claude',icon:'🧠',hint:'Excelente para análisis, pero su conocimiento tiene fecha de corte'},
+      {name:'Grok',icon:'⚡',hint:'Acceso a X/Twitter en tiempo real y noticias del momento',correct:true},
+    ],
+    correct_feedback:'✅ ¡Exacto! Grok tiene acceso privilegiado a la plataforma X (Twitter) en tiempo real, lo que lo hace ideal para analizar noticias recientes, tendencias y debates de actualidad en el aula.',
+    wrong_feedback:'⚡ Recuerda cuál de estas herramientas tiene acceso directo a la red social X (antes Twitter) y puede recuperar información de lo que está pasando en este preciso momento.',
+    clue:'Esta IA fue creada por xAI, la empresa de Elon Musk, y tiene acceso directo a todos los posts de X (Twitter) en tiempo real.',
+    points:100
+  },
+  {
+    id:7,
+    emoji:'🌍',
+    title:'El Aula del Futuro',
+    scenario:'Una coordinadora pedagógica quiere diseñar una unidad didáctica completa sobre inteligencia artificial para docentes de toda la institución. Necesita una IA que pueda generar el plan de unidad, integrarlo con Google Docs, analizar imágenes de materiales existentes Y hacer todo esto en un flujo de trabajo integrado con las herramientas escolares.',
+    challenge:'¿Qué herramienta de IA ofrece mejor integración con el ecosistema Google (Docs, Drive, Classroom) para planificación educativa institucional?',
+    options:[
+      {name:'Perplexity',icon:'🔍',hint:'Especialista en búsqueda, no en integración con Google Workspace'},
+      {name:'Meta AI',icon:'🌐',hint:'Integrado en Meta, no en Google Workspace'},
+      {name:'ChatGPT',icon:'🤖',hint:'Puede usar plugins pero no se integra nativamente con Google'},
+      {name:'Gemini',icon:'✨',hint:'Integración nativa con Google Workspace, Docs, Drive y Classroom',correct:true},
+    ],
+    correct_feedback:'✅ ¡MISIÓN COMPLETADA! Gemini es la elección perfecta: se integra nativamente con Google Docs, Slides, Drive y Classroom, puede analizar imágenes, documentos y videos, y forma parte del ecosistema que muchas instituciones educativas ya usan a diario.',
+    wrong_feedback:'✨ Piensa en cuál herramienta fue creada por Google y vive dentro de su ecosistema. ¿Cuál puede trabajar directamente dentro de Google Docs o Classroom sin salir de esas plataformas?',
+    clue:'Esta IA es el asistente oficial de Google. Si tu institución usa Gmail, Drive o Classroom, esta herramienta ya está disponible integrada en esas plataformas.',
+    points:100
+  }
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let state = {
+  room: 0,
+  lives: 3,
+  score: 0,
+  answered: false,
+  wrongAttempts: 0
+};
+
+// ═══════════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════════
+function initParticles(){
+  const c = document.getElementById('particles');
+  for(let i=0;i<40;i++){
+    const p = document.createElement('div');
+    p.className='particle';
+    p.style.left = Math.random()*100+'%';
+    p.style.animationDuration = (6+Math.random()*14)+'s';
+    p.style.animationDelay = (Math.random()*10)+'s';
+    p.style.width = p.style.height = (1+Math.random()*2)+'px';
+    p.style.background = Math.random()>.7?'var(--gold)':'var(--cyan)';
+    c.appendChild(p);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════════
+function startGame(){
+  state = {room:0,lives:3,score:0,answered:false,wrongAttempts:0};
+  showScreen('screen-room');
+  document.getElementById('hud').classList.add('visible');
+  renderRoom();
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>{
+    s.classList.remove('active');
+    s.style.display='none';
+  });
+  const el = document.getElementById(id);
+  el.style.display='flex';
+  el.classList.add('active');
+}
+
+function renderRoom(){
+  const r = ROOMS[state.room];
+  state.answered = false;
+  state.wrongAttempts = 0;
+
+  // HUD
+  document.getElementById('hud-room').textContent = `SALA ${state.room+1}/7`;
+  updateLivesHUD();
+  document.getElementById('hud-score').textContent = state.score;
+
+  // Header
+  document.getElementById('room-number').textContent = `SALA ${state.room+1} DE 7`;
+  document.getElementById('room-title').innerHTML = `<span class="room-emoji">${r.emoji}</span>${r.title}`;
+
+  // Progress
+  const pw = document.getElementById('progress-wrap');
+  pw.innerHTML='';
+  ROOMS.forEach((_,i)=>{
+    const s = document.createElement('div');
+    s.className='progress-step';
+    if(i<state.room) s.classList.add('done');
+    else if(i===state.room) s.classList.add('current');
+    pw.appendChild(s);
+  });
+
+  // Texts
+  document.getElementById('scenario-text').textContent = r.scenario;
+  document.getElementById('challenge-text').textContent = r.challenge;
+
+  // Options
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML='';
+
+  // Shuffle order keeping track of correct
+  const shuffled = [...r.options].sort(()=>Math.random()-.5);
+  shuffled.forEach((opt,i)=>{
+    const btn = document.createElement('button');
+    btn.className='option-btn';
+    btn.dataset.correct = opt.correct||false;
+    btn.dataset.name = opt.name;
+    btn.innerHTML=`
+      <div class="option-icon">${opt.icon}</div>
+      <div class="option-text">
+        <div class="option-name">${opt.name}</div>
+        <div class="option-hint">${opt.hint}</div>
+      </div>`;
+    btn.addEventListener('click',()=>handleAnswer(btn,opt));
+    grid.appendChild(btn);
+  });
+
+  // Feedback
+  const fb = document.getElementById('feedback-box');
+  fb.style.display='none';
+  fb.className='feedback-box';
+
+  document.getElementById('next-btn').classList.add('hidden');
+}
+
+function handleAnswer(btn, opt){
+  if(state.answered) return;
+
+  const r = ROOMS[state.room];
+  const allBtns = document.querySelectorAll('.option-btn');
+
+  if(opt.correct){
+    state.answered = true;
+    btn.classList.add('selected-correct');
+
+    // Reveal others
+    allBtns.forEach(b=>{
+      b.disabled=true;
+      if(b.dataset.correct==='true') b.classList.add('reveal-correct');
+    });
+
+    // Score (less points for hints used)
+    const pts = Math.max(r.points - state.wrongAttempts*30, 20);
+    state.score += pts;
+    document.getElementById('hud-score').textContent = state.score;
+
+    showFeedback('correct','🔓 SALA DESBLOQUEADA', r.correct_feedback, pts);
+    document.getElementById('next-btn').classList.remove('hidden');
+
+  } else {
+    state.wrongAttempts++;
+    state.lives--;
+    btn.classList.add('selected-wrong');
+    btn.disabled=true;
+    updateLivesHUD();
+
+    setTimeout(()=>btn.classList.remove('selected-wrong'),400);
+
+    if(state.lives<=0){
+      showFeedback('wrong','💀 SIN VIDAS', r.wrong_feedback+' (Pista revelada: '+r.clue+')');
+      // Still allow to continue after seeing answer
+      allBtns.forEach(b=>{
+        b.disabled=true;
+        if(b.dataset.correct==='true') b.classList.add('reveal-correct');
+      });
+      state.answered=true;
+      state.lives=3; // reset lives for next room
+      updateLivesHUD();
+      document.getElementById('next-btn').classList.remove('hidden');
+    } else {
+      showClue(r.clue, state.wrongAttempts);
+    }
+  }
+}
+
+function showFeedback(type, title, body, pts){
+  const fb = document.getElementById('feedback-box');
+  fb.className = 'feedback-box '+type;
+  document.getElementById('fb-title').textContent = title + (pts?' (+'+pts+' pts)':'');
+  document.getElementById('fb-body').textContent = body;
+  fb.style.display='block';
+}
+
+function showClue(clue, attempt){
+  document.getElementById('clue-icon').textContent = attempt===1?'💡':'🔮';
+  document.getElementById('clue-title').textContent = attempt===1?'PISTA DESBLOQUEADA':'SEGUNDA PISTA';
+  document.getElementById('clue-text').textContent = clue;
+  document.getElementById('clue-modal').classList.add('open');
+}
+
+function closeClue(){
+  document.getElementById('clue-modal').classList.remove('open');
+}
+
+function nextRoom(){
+  state.room++;
+  if(state.room>=ROOMS.length){
+    showEnd();
+  } else {
+    renderRoom();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+}
+
+function updateLivesHUD(){
+  const el = document.getElementById('hud-lives');
+  el.innerHTML='';
+  for(let i=0;i<3;i++){
+    const s = document.createElement('span');
+    s.className='life'+(i>=state.lives?' lost':'');
+    s.textContent='❤️';
+    el.appendChild(s);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// END SCREEN
+// ═══════════════════════════════════════════════
+function showEnd(){
+  document.getElementById('hud').classList.remove('visible');
+  showScreen('screen-end');
+
+  const maxScore = ROOMS.reduce((a,r)=>a+r.points,0);
+  const pct = state.score/maxScore;
+
+  document.getElementById('cert-score').innerHTML =
+    `${state.score} <span>/ ${maxScore} pts</span>`;
+
+  let stars='⭐';
+  let title='¡Sistema Restaurado!';
+  let subtitle='Has desbloqueado el futuro de la educación.';
+  let icon='🏆';
+
+  if(pct>=.9){stars='⭐⭐⭐';icon='🏆';title='¡MAESTRA/O SUPREMA/O DE LA IA!';}
+  else if(pct>=.7){stars='⭐⭐';icon='🎓';title='¡GRAN DETECTIVE PEDAGÓGICO!';}
+  else{stars='⭐';icon='🔓';title='¡SISTEMA RESTAURADO!';}
+
+  document.getElementById('end-icon').textContent=icon;
+  document.getElementById('end-title').textContent=title;
+  document.getElementById('end-subtitle').textContent=subtitle;
+  document.getElementById('stars-row').textContent=stars;
+
+  // confetti burst
+  for(let i=0;i<60;i++) launchConfetti();
+}
+
+function launchConfetti(){
+  const c = document.createElement('div');
+  c.style.cssText=`
+    position:fixed;top:0;left:${Math.random()*100}%;
+    width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;
+    background:${['#f0c060','#30d5c8','#e84040','#40d880','#a060ff'][Math.floor(Math.random()*5)]};
+    border-radius:${Math.random()>.5?'50%':'2px'};
+    animation:confettiFall ${2+Math.random()*3}s ease forwards;
+    z-index:300;pointer-events:none;
+  `;
+  document.body.appendChild(c);
+  setTimeout(()=>c.remove(),5000);
+}
+
+const confettiStyle=document.createElement('style');
+confettiStyle.textContent=`
+@keyframes confettiFall{
+  0%{transform:translateY(-10px) rotate(0deg);opacity:1}
+  100%{transform:translateY(100vh) rotate(${Math.random()*720}deg);opacity:0}
+}`;
+document.head.appendChild(confettiStyle);
+
+function printCert(){window.print();}
+function restartGame(){
+  showScreen('screen-intro');
+  document.getElementById('hud').classList.remove('visible');
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+initParticles();
+</script>
+</body>
+</html>
